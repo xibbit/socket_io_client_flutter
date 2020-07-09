@@ -7,10 +7,10 @@ import 'dart:math' as math;
 import 'package:logging/logging.dart';
 import 'package:socket_io_common/src/util/event_emitter.dart';
 import 'package:socket_io_common/src/parser/parser.dart';
-import 'package:socket_io_client/src/on.dart';
-import 'package:socket_io_client/src/socket.dart';
-import 'package:socket_io_client/src/engine/socket.dart' as engine_socket;
-import 'package:socket_io_client/src/on.dart' as util;
+import '../src/on.dart';
+import '../src/socket.dart';
+import '../src/engine/socket.dart' as engine_socket;
+import '../src/on.dart' as util;
 
 final Logger _logger = Logger('socket_io_client:Manager');
 
@@ -25,30 +25,30 @@ class Manager extends EventEmitter {
   // Namespaces
   Map<String, Socket> nsps = {};
   List subs = [];
-  late Map options;
+  Map options;
 
-  bool? _reconnection;
-  num? _reconnectionAttempts;
-  num? _reconnectionDelay;
-  num? _randomizationFactor;
-  num? _reconnectionDelayMax;
-  num? _timeout;
-  _Backoff? backoff;
+  bool _reconnection;
+  num _reconnectionAttempts;
+  num _reconnectionDelay;
+  num _randomizationFactor;
+  num _reconnectionDelayMax;
+  num _timeout;
+  _Backoff backoff;
   String readyState = 'closed';
-  late String uri;
+  String uri;
   List connecting = [];
-  num? lastPing;
+  num lastPing;
   bool encoding = false;
   List packetBuffer = [];
   bool reconnecting = false;
 
-  late engine_socket.Socket engine;
+  engine_socket.Socket engine;
   Encoder encoder = Encoder();
   Decoder decoder = Decoder();
-  late bool autoConnect;
-  bool? skipReconnect;
+  bool autoConnect;
+  bool skipReconnect;
 
-  Manager({uri, Map? options}) {
+  Manager({uri, Map options}) {
     options = options ?? <dynamic, dynamic>{};
 
     options['path'] ??= '/socket.io';
@@ -76,7 +76,7 @@ class Manager extends EventEmitter {
   void emitAll(String event, [data]) {
     emit(event, data);
     for (var nsp in nsps.keys) {
-      nsps[nsp]!.emit(event, data);
+      nsps[nsp].emit(event, data);
     }
   }
 
@@ -87,7 +87,7 @@ class Manager extends EventEmitter {
   ///
   void updateSocketIds() {
     for (var nsp in nsps.keys) {
-      nsps[nsp]!.id = generateId(nsp);
+      nsps[nsp].id = generateId(nsp);
     }
   }
 
@@ -110,8 +110,8 @@ class Manager extends EventEmitter {
   /// @return {Manager} self or value
   /// @api public
   ///
-  bool? get reconnection => _reconnection;
-  set reconnection(bool? v) => _reconnection = v;
+  bool get reconnection => _reconnection;
+  set reconnection(bool v) => _reconnection = v;
 
   ///
   /// Sets the reconnection attempts config.
@@ -120,8 +120,8 @@ class Manager extends EventEmitter {
   /// @return {Manager} self or value
   /// @api public
   ///
-  num? get reconnectionAttempts => _reconnectionAttempts;
-  set reconnectionAttempts(num? v) => _reconnectionAttempts = v;
+  num get reconnectionAttempts => _reconnectionAttempts;
+  set reconnectionAttempts(num v) => _reconnectionAttempts = v;
 
   ///
   /// Sets the delay between reconnections.
@@ -130,11 +130,11 @@ class Manager extends EventEmitter {
   /// @return {Manager} self or value
   /// @api public
   ///
-  num? get reconnectionDelay => _reconnectionDelay;
-  set reconnectionDelay(num? v) => _reconnectionDelay = v;
+  num get reconnectionDelay => _reconnectionDelay;
+  set reconnectionDelay(num v) => _reconnectionDelay = v;
 
-  num? get randomizationFactor => _randomizationFactor;
-  set randomizationFactor(num? v) {
+  num get randomizationFactor => _randomizationFactor;
+  set randomizationFactor(num v) {
     _randomizationFactor = v;
     backoff?.jitter = v;
   }
@@ -146,8 +146,8 @@ class Manager extends EventEmitter {
   /// @return {Manager} self or value
   /// @api public
   ///
-  num? get reconnectionDelayMax => _reconnectionDelayMax;
-  set reconnectionDelayMax(num? v) {
+  num get reconnectionDelayMax => _reconnectionDelayMax;
+  set reconnectionDelayMax(num v) {
     _reconnectionDelayMax = v;
     backoff?.max = v;
   }
@@ -158,8 +158,8 @@ class Manager extends EventEmitter {
   /// @return {Manager} self or value
   /// @api public
   ///
-  num? get timeout => _timeout;
-  set timeout(num? v) => _timeout = v;
+  num get timeout => _timeout;
+  set timeout(num v) => _timeout = v;
 
   ///
   /// Starts trying to reconnect if reconnection is enabled and we have not
@@ -169,7 +169,7 @@ class Manager extends EventEmitter {
   ///
   void maybeReconnectOnOpen() {
     // Only try to reconnect if it's the first time we're connecting
-    if (!reconnecting && _reconnection == true && backoff!.attempts == 0) {
+    if (!reconnecting && _reconnection == true && backoff.attempts == 0) {
       // keeps reconnection from firing twice for the same reconnection loop
       reconnect();
     }
@@ -182,10 +182,10 @@ class Manager extends EventEmitter {
   /// @return {Manager} self
   /// @api public
   ///
-  Manager open({callback, Map? opts}) =>
+  Manager open({callback, Map opts}) =>
       connect(callback: callback, opts: opts);
 
-  Manager connect({callback, Map? opts}) {
+  Manager connect({callback, Map opts}) {
     _logger.fine('readyState $readyState');
     if (readyState.contains('open')) return this;
 
@@ -217,7 +217,7 @@ class Manager extends EventEmitter {
 
     // emit `connect_timeout`
     if (_timeout != null) {
-      var timeout = _timeout!;
+      var timeout = _timeout;
       _logger.fine('connect attempt will timeout after $timeout');
 
       // set timer
@@ -229,7 +229,7 @@ class Manager extends EventEmitter {
         emitAll('connect_timeout', timeout);
       });
 
-      subs.add(Destroyable(() => timer.cancel()));
+      subs.add(Destroyable(() => timer?.cancel()));
     }
 
     subs.add(openSub);
@@ -279,7 +279,7 @@ class Manager extends EventEmitter {
   /// @api private
   ///
   void onpong([_]) {
-    emitAll('pong', DateTime.now().millisecondsSinceEpoch - lastPing!);
+    emitAll('pong', DateTime.now().millisecondsSinceEpoch - lastPing);
   }
 
   ///
@@ -330,7 +330,7 @@ class Manager extends EventEmitter {
       nsps[nsp] = socket;
       socket.on('connecting', onConnecting);
       socket.on('connect', (_) {
-        socket!.id = generateId(nsp);
+        socket.id = generateId(nsp);
       });
 
       if (autoConnect) {
@@ -432,7 +432,7 @@ class Manager extends EventEmitter {
       // an open event never happened
       cleanup();
     }
-    backoff!.reset();
+    backoff.reset();
     readyState = 'closed';
     engine.close();
   }
@@ -446,11 +446,11 @@ class Manager extends EventEmitter {
     _logger.fine('onclose');
 
     cleanup();
-    backoff!.reset();
+    backoff.reset();
     readyState = 'closed';
     emit('close', error['reason']);
 
-    if (_reconnection == true && !skipReconnect!) {
+    if (_reconnection == true && !skipReconnect) {
       reconnect();
     }
   }
@@ -461,27 +461,27 @@ class Manager extends EventEmitter {
   /// @api private
   ///
   Manager reconnect() {
-    if (reconnecting || skipReconnect!) return this;
+    if (reconnecting || skipReconnect) return this;
 
-    if (backoff!.attempts >= _reconnectionAttempts!) {
+    if (backoff.attempts >= _reconnectionAttempts) {
       _logger.fine('reconnect failed');
-      backoff!.reset();
+      backoff.reset();
       emitAll('reconnect_failed');
       reconnecting = false;
     } else {
-      var delay = backoff!.duration;
+      var delay = backoff.duration;
       _logger.fine('will wait %dms before reconnect attempt', delay);
 
       reconnecting = true;
       var timer = Timer(Duration(milliseconds: delay.toInt()), () {
-        if (skipReconnect!) return;
+        if (skipReconnect) return;
 
         _logger.fine('attempting reconnect');
-        emitAll('reconnect_attempt', backoff!.attempts);
-        emitAll('reconnecting', backoff!.attempts);
+        emitAll('reconnect_attempt', backoff.attempts);
+        emitAll('reconnecting', backoff.attempts);
 
         // check again for the case socket closed in above events
-        if (skipReconnect!) return;
+        if (skipReconnect) return;
 
         open(callback: ([err]) {
           if (err != null) {
@@ -507,9 +507,9 @@ class Manager extends EventEmitter {
   /// @api private
   ///
   void onreconnect() {
-    var attempt = backoff!.attempts;
+    var attempt = backoff.attempts;
     reconnecting = false;
-    backoff!.reset();
+    backoff.reset();
     updateSocketIds();
     emitAll('reconnect', attempt);
   }
@@ -529,7 +529,7 @@ class _Backoff {
   num _ms;
   num _max;
   final num _factor;
-  late num _jitter;
+  num _jitter;
   num attempts = 0;
 
   _Backoff({min = 100, max = 10000, jitter = 0, factor = 2})

@@ -7,6 +7,7 @@ Port of awesome JavaScript Node.js library - [Socket.io-client v2.0.1](https://g
 **Dart Server**
 ```dart
 import 'package:socket_io/socket_io.dart';
+import 'package:socket_io_client_flutter/socket_io_client.dart' as IO;
 
 main() {
   // Dart server
